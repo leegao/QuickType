@@ -16,7 +16,7 @@ import java.util.function.Consumer;
 
 public abstract class Step {
 
-  public abstract void step(List<ListenableFuture<?>> previousSteps, ListeningExecutorService executor)
+  public abstract void step(List<ListenableFuture<?>> previousSteps, ListeningExecutorService executor, IndexingContext context)
       throws ExecutionException, InterruptedException;
 
   public static <T> Builder<T> callable(Transformer<T> transformer) {
@@ -67,10 +67,15 @@ public abstract class Step {
       return this;
     }
 
+    public Builder<T> after(Consumer<List<T>> results) {
+      this.postProccessor = Optional.of(results);
+      return this;
+    }
+
     public Step build() {
       return new Step() {
         @Override
-        public void step(List<ListenableFuture<?>> previousSteps, ListeningExecutorService executor)
+        public void step(List<ListenableFuture<?>> previousSteps, ListeningExecutorService executor, IndexingContext context)
             throws ExecutionException, InterruptedException {
           ListenableFuture<?> future = Futures.transform(
               Futures.allAsList(
@@ -79,6 +84,7 @@ public abstract class Step {
                       buckets,
                       ImmutableList.of(),
                       callback,
+                      context,
                       executor)),
               result -> {
                 postProccessor.ifPresent(listConsumer -> listConsumer.accept(result));
@@ -100,11 +106,12 @@ public abstract class Step {
       int numberOfSubtasks,
       final Iterable<? extends Observer> observers,
       FutureCallback<T> callback,
+      IndexingContext context,
       ListeningExecutorService executorService) {
     List<ListenableFuture<T>> futures = new ArrayList<>();
     for (int i = 0; i < numberOfSubtasks; i++) {
       final int slice = i;
-      Callable<T> callable = () -> job.call(slice, numberOfSubtasks, null);
+      Callable<T> callable = () -> job.call(slice, numberOfSubtasks, context);
       ListenableFuture<T> future = executorService.submit(callable);
       // We want the callback to execute on the same thread so we see progress; otherwise, they
       // are blocked until everything in the task queue is processed.

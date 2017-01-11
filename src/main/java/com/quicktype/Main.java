@@ -9,6 +9,7 @@ import org.kohsuke.args4j.Option;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class Main {
   @Option(name = "-I", metaVar = "include")
@@ -17,13 +18,14 @@ public class Main {
   @Argument(required = true, metaVar = "input-files")
   private List<String> inputFiles = new ArrayList<String>();
 
-  public static void main(String[] args) throws CmdLineException, IOException {
+  public static void main(String[] args) throws CmdLineException, IOException, ExecutionException, InterruptedException {
     new Main().driver(args);
   }
 
-  private void driver(String[] args) throws CmdLineException, IOException {
+  private void driver(String[] args) throws CmdLineException, IOException, ExecutionException, InterruptedException {
     CmdLineParser parser = new CmdLineParser(this);
     parser.parseArgument(args);
-    Index.index(inputFiles);
+    IndexingContext index = Index.index(inputFiles);
+    System.err.println(index.compiledTrees[0]);
   }
 }

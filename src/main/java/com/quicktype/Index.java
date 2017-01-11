@@ -7,28 +7,29 @@ import com.quicktype.parsing.Parser;
 import com.quicktype.steps.Processor;
 import com.quicktype.steps.Step;
 import com.sun.source.tree.CompilationUnitTree;
-import com.sun.source.tree.Tree;
 
-import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
 public class Index {
-  public static void index(List<String> srcs) {
+  public static IndexingContext index(List<String> srcs) throws ExecutionException, InterruptedException {
     int parallelism = Runtime.getRuntime().availableProcessors();
     ListeningExecutorService executor = MoreExecutors.listeningDecorator(
         Executors.newFixedThreadPool(parallelism));
 
     final CompilationUnitTree[] compiledTrees = new CompilationUnitTree[srcs.size()];
-
+    IndexingContext context = new IndexingContext(compiledTrees, srcs);
     ImmutableList<Step> steps = ImmutableList.<Step>builder()
         .add(
             Step.callable(Parser::parse)
-            .withName("")
-            .splitInto(5)
-            .build())
+                .withName("Parsing Files")
+                .splitInto(5)
+                .after(context::updateASTs)
+                .build())
         .build();
-    Processor.process(steps, executor);
+    Processor.process(steps, executor, context);
     executor.shutdown();
+    return context;
   }
 }
