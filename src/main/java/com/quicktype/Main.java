@@ -24,8 +24,6 @@ public class Main {
   private void driver(String[] args) throws CmdLineException, IOException {
     CmdLineParser parser = new CmdLineParser(this);
     parser.parseArgument(args);
-    for (String file : inputFiles) {
-      Parser.parse(file);
-    }
+    Index.index(inputFiles);
   }
 }
