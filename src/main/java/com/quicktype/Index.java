@@ -6,6 +6,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.quicktype.parsing.Parser;
 import com.quicktype.steps.Processor;
 import com.quicktype.steps.Step;
+import com.quicktype.symbolize.SymbolizeClasses;
 import com.sun.source.tree.CompilationUnitTree;
 
 import java.util.List;
@@ -18,13 +19,21 @@ public class Index {
     ListeningExecutorService executor = MoreExecutors.listeningDecorator(
         Executors.newFixedThreadPool(parallelism));
 
-    IndexingContext context = new IndexingContext(new CompilationUnitTree[srcs.size()], srcs);
+    IndexingContext context = new IndexingContext(srcs);
     ImmutableList<Step> steps = ImmutableList.<Step>builder()
         .add(
             Step.callable(Parser::parse)
                 .withName("Parsing Files")
                 .splitInto(256)
                 .after(context::updateASTs)
+                .build()
+        )
+        .add(Step.barrier())
+        .add(
+            Step.callable(SymbolizeClasses::compute)
+                .withName("Symbolizing Class Symbols")
+                .splitInto(256)
+                .after(System.out::println)
                 .build()
         )
         .add(Step.barrier())

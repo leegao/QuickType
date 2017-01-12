@@ -8,8 +8,8 @@ public class IndexingContext {
   public final CompilationUnitTree[] compiledTrees;
   public final List<String> files;
 
-  public IndexingContext(CompilationUnitTree[] compiledTrees, List<String> files) {
-    this.compiledTrees = compiledTrees;
+  IndexingContext(List<String> files) {
+    this.compiledTrees = new CompilationUnitTree[files.size()];
     this.files = files;
   }
 

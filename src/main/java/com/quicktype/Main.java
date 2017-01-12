@@ -36,6 +36,6 @@ public class Main {
       inputs.addAll(files);
     }
     IndexingContext index = Index.index(inputs);
-    System.err.println(index.compiledTrees[3]);
+    // System.err.println(index.compiledTrees[3]);
   }
 }
