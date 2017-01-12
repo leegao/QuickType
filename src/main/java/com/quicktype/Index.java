@@ -18,15 +18,16 @@ public class Index {
     ListeningExecutorService executor = MoreExecutors.listeningDecorator(
         Executors.newFixedThreadPool(parallelism));
 
-    final CompilationUnitTree[] compiledTrees = new CompilationUnitTree[srcs.size()];
-    IndexingContext context = new IndexingContext(compiledTrees, srcs);
+    IndexingContext context = new IndexingContext(new CompilationUnitTree[srcs.size()], srcs);
     ImmutableList<Step> steps = ImmutableList.<Step>builder()
         .add(
             Step.callable(Parser::parse)
                 .withName("Parsing Files")
-                .splitInto(5)
+                .splitInto(256)
                 .after(context::updateASTs)
-                .build())
+                .build()
+        )
+        .add(Step.barrier())
         .build();
     Processor.process(steps, executor, context);
     executor.shutdown();

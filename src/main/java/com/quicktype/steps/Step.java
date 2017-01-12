@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Observer;
 import java.util.Optional;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
@@ -21,6 +20,18 @@ public abstract class Step {
 
   public static <T> Builder<T> callable(Transformer<T> transformer) {
     return new Builder<T>(transformer);
+  }
+
+  public static Step barrier() {
+    return new Step() {
+      @Override
+      public void step(
+          List<ListenableFuture<?>> previousSteps,
+          ListeningExecutorService executor,
+          IndexingContext context) throws ExecutionException, InterruptedException {
+        Futures.allAsList(previousSteps).get();
+      }
+    };
   }
 
   public interface Transformer<T> {
@@ -101,7 +112,7 @@ public abstract class Step {
    * Takes a job and splits it into subparts and submits them to an executor.
    * @return A list of futures representing the subparts of this job.
    */
-  public static <T> List<ListenableFuture<T>> distributeAndSubmitJobs(
+  private static <T> List<ListenableFuture<T>> distributeAndSubmitJobs(
       final Transformer<T> job,
       int numberOfSubtasks,
       final Iterable<? extends Observer> observers,
@@ -111,10 +122,7 @@ public abstract class Step {
     List<ListenableFuture<T>> futures = new ArrayList<>();
     for (int i = 0; i < numberOfSubtasks; i++) {
       final int slice = i;
-      Callable<T> callable = () -> job.call(slice, numberOfSubtasks, context);
-      ListenableFuture<T> future = executorService.submit(callable);
-      // We want the callback to execute on the same thread so we see progress; otherwise, they
-      // are blocked until everything in the task queue is processed.
+      ListenableFuture<T> future = executorService.submit(() -> job.call(slice, numberOfSubtasks, context));
       Futures.addCallback(future, callback, MoreExecutors.sameThreadExecutor());
       futures.add(future);
     }
