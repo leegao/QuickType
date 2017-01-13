@@ -6,6 +6,7 @@ import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
 import org.apache.commons.collections4.trie.PatriciaTrie;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -13,7 +14,7 @@ import java.util.Optional;
 public class IndexingContext {
   public final CompilationUnitTree[] compiledTrees;
   public final List<String> files;
-  public final BiMap<String, ClassTree> symbols = HashBiMap.create();
+  public final BiMap<String, ClassTree> symbolsToTrees = HashBiMap.create();
   public PatriciaTrie<String> trie = new PatriciaTrie<>();
 
   IndexingContext(List<String> files) {
@@ -31,8 +32,8 @@ public class IndexingContext {
   }
 
   void updateClassSymbols(List<BiMap<String, ClassTree>> splitSymbols) {
-    splitSymbols.forEach(symbols::putAll);
-    this.symbols.forEach((symbol, tree) -> trie.put(symbol.replace('$', '.'), symbol));
+    splitSymbols.forEach(symbolsToTrees::putAll);
+    symbolsToTrees.forEach((symbol, tree) -> trie.put(symbol.replace('$', '.'), symbol));
   }
 
   public Optional<String> getSymbol(String name) {
@@ -43,6 +44,12 @@ public class IndexingContext {
   }
 
   public Map<String, String> getSubSymbols(String prefix) {
-    return trie.prefixMap(prefix);
+    Map<String, String> subSymbols = new HashMap<>();
+    for (Map.Entry<String, String> entry : trie.prefixMap(prefix).entrySet()) {
+      if (entry.getValue().charAt(prefix.length()) == '$') {
+        subSymbols.put(entry.getKey(), entry.getValue());
+      }
+    }
+    return subSymbols;
   }
 }

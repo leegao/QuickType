@@ -42,6 +42,7 @@ public class Index {
             Step.callable(SymbolizeAncestors::compute)
                 .withName("Symbolizing Ancestors")
                 .splitInto(256)
+                .after(System.err::println)
                 .build()
         )
         .add(Step.barrier())
