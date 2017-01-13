@@ -6,12 +6,10 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
+import jdk.internal.org.objectweb.asm.tree.ClassNode;
 import org.apache.commons.collections4.trie.PatriciaTrie;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class IndexingContext {
   public final CompilationUnitTree[] compiledTrees;
@@ -19,10 +17,13 @@ public class IndexingContext {
   public final BiMap<String, ClassTree> symbolsToTrees = HashBiMap.create();
   public final PatriciaTrie<String> trie = new PatriciaTrie<>();
   public final Multimap<String, String> ancestors = HashMultimap.create();
+  public final List<String> classes;
+  public final List<ClassNode> classNodes = new ArrayList<>();
 
-  IndexingContext(List<String> files) {
+  IndexingContext(List<String> files, List<String> classes) {
     this.compiledTrees = new CompilationUnitTree[files.size()];
     this.files = files;
+    this.classes = classes;
   }
 
   void updateASTs(List<List<CompilationUnitTree>> trees) {
@@ -41,6 +42,10 @@ public class IndexingContext {
 
   void updateAncestors(List<Multimap<String, String>> splitAncestors) {
     splitAncestors.forEach(ancestors::putAll);
+  }
+
+  void updateClassNodes(List<List<ClassNode>> splitClassNodes) {
+    splitClassNodes.forEach(classNodes::addAll);
   }
 
   public Optional<String> getSymbol(String name) {

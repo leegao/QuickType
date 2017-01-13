@@ -28,6 +28,7 @@ public class Main {
     CmdLineParser parser = new CmdLineParser(this);
     parser.parseArgument(args);
     List<String> inputs = new ArrayList<>();
+    List<String> classes = new ArrayList<>();
     for (String file : inputFiles) {
       List<String> files = Files.find(Paths.get(file), 999, (p, bfa) -> true)
           .map(path -> path.toAbsolutePath().toFile().toString())
@@ -35,7 +36,14 @@ public class Main {
           .collect(Collectors.toList());
       inputs.addAll(files);
     }
-    IndexingContext index = Index.index(inputs);
+    for (String file : includes) {
+      List<String> files = Files.find(Paths.get(file), 999, (p, bfa) -> true)
+          .map(path -> path.toAbsolutePath().toFile().toString())
+          .filter(path -> path.endsWith(".class") || path.endsWith(".jar"))
+          .collect(Collectors.toList());
+      classes.addAll(files);
+    }
+    IndexingContext index = Index.index(inputs, classes);
     // System.err.println(index.compiledTrees[3]);
   }
 }
