@@ -8,7 +8,6 @@ import com.quicktype.steps.Processor;
 import com.quicktype.steps.Step;
 import com.quicktype.symbolize.SymbolizeAncestors;
 import com.quicktype.symbolize.SymbolizeClasses;
-import com.sun.source.tree.CompilationUnitTree;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -42,7 +41,7 @@ public class Index {
             Step.callable(SymbolizeAncestors::compute)
                 .withName("Symbolizing Ancestors")
                 .splitInto(256)
-                .after(System.err::println)
+                .after(context::updateAncestors)
                 .build()
         )
         .add(Step.barrier())

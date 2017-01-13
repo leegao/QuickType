@@ -2,6 +2,8 @@ package com.quicktype;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
 import org.apache.commons.collections4.trie.PatriciaTrie;
@@ -15,7 +17,8 @@ public class IndexingContext {
   public final CompilationUnitTree[] compiledTrees;
   public final List<String> files;
   public final BiMap<String, ClassTree> symbolsToTrees = HashBiMap.create();
-  public PatriciaTrie<String> trie = new PatriciaTrie<>();
+  public final PatriciaTrie<String> trie = new PatriciaTrie<>();
+  public final Multimap<String, String> ancestors = HashMultimap.create();
 
   IndexingContext(List<String> files) {
     this.compiledTrees = new CompilationUnitTree[files.size()];
@@ -34,6 +37,10 @@ public class IndexingContext {
   void updateClassSymbols(List<BiMap<String, ClassTree>> splitSymbols) {
     splitSymbols.forEach(symbolsToTrees::putAll);
     symbolsToTrees.forEach((symbol, tree) -> trie.put(symbol.replace('$', '.'), symbol));
+  }
+
+  void updateAncestors(List<Multimap<String, String>> splitAncestors) {
+    splitAncestors.forEach(ancestors::putAll);
   }
 
   public Optional<String> getSymbol(String name) {
