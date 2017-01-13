@@ -1,6 +1,8 @@
 package com.quicktype.symbolize;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Lists;
 import com.quicktype.IndexingContext;
 import com.quicktype.steps.Step;
@@ -17,17 +19,17 @@ import java.io.IOException;
 import java.util.*;
 
 public class SymbolizeClasses {
-  public static Set<String> compute(int slice, int buckets, IndexingContext context) throws IOException {
+  public static BiMap<String, ClassTree> compute(int slice, int buckets, IndexingContext context) throws IOException {
     int length = Step.getLength(context.compiledTrees.length, buckets, slice);
-    Set<String> names = new HashSet<>();
+    BiMap<String, ClassTree> names = HashBiMap.create();
     for (int i = 0; i < length; i++) {
-      names.addAll(compute(context.compiledTrees[slice + buckets * i], context));
+      names.putAll(compute(context.compiledTrees[slice + buckets * i], context));
     }
     return names;
   }
 
-  private static Set<String> compute(CompilationUnitTree tree, IndexingContext context) {
-    Set<String> output = new HashSet<>();
+  private static BiMap<String, ClassTree> compute(CompilationUnitTree tree, IndexingContext context) {
+    BiMap<String, ClassTree> output = HashBiMap.create();
     Stack<Integer> anonymous = new Stack<>();
     anonymous.push(-1);
     new TreePathScanner<Void, IndexingContext>() {
@@ -36,14 +38,14 @@ public class SymbolizeClasses {
         Integer top = anonymous.pop();
         anonymous.push(top + 1);
         anonymous.push(-1);
-        Void aVoid = super.visitNewClass(newClassTree, context);
+        super.visitNewClass(newClassTree, context);
         anonymous.pop();
-        return aVoid;
+        return null;
       }
 
       @Override
       public Void visitClass(ClassTree classTree, IndexingContext context) {
-        output.add(Joiner.on('$').join(name(getCurrentPath(), anonymous)));
+        output.put(Joiner.on('$').join(name(getCurrentPath(), anonymous)), classTree);
         return super.visitClass(classTree, context);
       }
     }.scan(tree, context);

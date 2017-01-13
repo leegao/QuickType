@@ -6,6 +6,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.quicktype.parsing.Parser;
 import com.quicktype.steps.Processor;
 import com.quicktype.steps.Step;
+import com.quicktype.symbolize.SymbolizeAncestors;
 import com.quicktype.symbolize.SymbolizeClasses;
 import com.sun.source.tree.CompilationUnitTree;
 
@@ -33,7 +34,14 @@ public class Index {
             Step.callable(SymbolizeClasses::compute)
                 .withName("Symbolizing Class Symbols")
                 .splitInto(256)
-                .after(System.out::println)
+                .after(context::updateClassSymbols)
+                .build()
+        )
+        .add(Step.barrier())
+        .add(
+            Step.callable(SymbolizeAncestors::compute)
+                .withName("Symbolizing Ancestors")
+                .splitInto(256)
                 .build()
         )
         .add(Step.barrier())
