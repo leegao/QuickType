@@ -15,6 +15,7 @@ public class IndexingContext {
   public final CompilationUnitTree[] compiledTrees;
   public final List<String> files;
   public final BiMap<String, ClassTree> symbolsToTrees = HashBiMap.create();
+  public final BiMap<String, ClassNode> symbolsToNodes = HashBiMap.create();
   public final PatriciaTrie<String> trie = new PatriciaTrie<>();
   public final Multimap<String, String> ancestors = HashMultimap.create();
   public final List<String> classes;
@@ -63,5 +64,10 @@ public class IndexingContext {
       }
     }
     return subSymbols;
+  }
+
+  public void updateClassNodesSymbols(List<BiMap<String, ClassNode>> slices) {
+    slices.forEach(symbolsToNodes::putAll);
+    symbolsToNodes.forEach((symbol, node) -> trie.put(symbol.replace('$', '.'), symbol));
   }
 }

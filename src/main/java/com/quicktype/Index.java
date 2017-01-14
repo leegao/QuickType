@@ -8,6 +8,7 @@ import com.quicktype.parsing.Parser;
 import com.quicktype.steps.Processor;
 import com.quicktype.steps.Step;
 import com.quicktype.symbolize.SymbolizeAncestors;
+import com.quicktype.symbolize.SymbolizeClassNodes;
 import com.quicktype.symbolize.SymbolizeClasses;
 
 import java.util.List;
@@ -40,6 +41,11 @@ public class Index {
                 .withName("Symbolizing Class Symbols")
                 .splitInto(256)
                 .after(context::updateClassSymbols)
+                .build(),
+            Step.callable(SymbolizeClassNodes::compute)
+                .withName("Symbolizing ClassNodes")
+                .splitInto(256)
+                .after(context::updateClassNodesSymbols)
                 .build()
         )
         .add(Step.barrier())
@@ -54,6 +60,8 @@ public class Index {
         .build();
     Processor.process(steps, executor, context);
     executor.shutdown();
+    System.err.println(context.ancestors);
+
     return context;
   }
 }
