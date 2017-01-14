@@ -1,5 +1,6 @@
 package com.quicktype.steps;
 
+import com.google.common.base.Function;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.*;
@@ -38,6 +39,10 @@ public abstract class Step {
     T call(int slice, int bucket, IndexingContext context, ProcessingState<T> state) throws IOException;
   }
 
+  public interface SingleTransformer<T> {
+    T call(StepIndex index, IndexingContext context, ProcessingState<T> state) throws IOException, RetryException;
+  }
+
   public static int getLength(int size, int mod, int flag) {
     int quotient = size / mod;
     int remainder = size % mod;
@@ -49,8 +54,9 @@ public abstract class Step {
 
   public static class Builder<T> {
     private final Transformer<T> transformer;
+    private Optional<SingleTransformer<T>> singleTransformer = Optional.empty();
     private String name = "";
-    private int buckets = 1;
+    private int buckets = 256;
     private Optional<Consumer<List<T>>> postProccessor = Optional.empty();
     private FutureCallback<T> callback = new FutureCallback<T>() {
         @Override
@@ -78,6 +84,11 @@ public abstract class Step {
       return this;
     }
 
+    public Builder<T> singleTransformer(SingleTransformer<T> singleTransformer) {
+      this.singleTransformer = Optional.of(singleTransformer);
+      return this;
+    }
+
     public Builder<T> after(Consumer<List<T>> results) {
       this.postProccessor = Optional.of(results);
       return this;
@@ -88,6 +99,32 @@ public abstract class Step {
         @Override
         public void step(List<ListenableFuture<?>> previousSteps, ListeningExecutorService executor, IndexingContext context)
             throws ExecutionException, InterruptedException {
+          ProcessingState<T> state = new ProcessingState<>();
+          Function<List<T>, List<T>> reduceQueue = new Function<List<T>, List<T>>() {
+            @Override
+            public List<T> apply(List<T> result) {
+              if (!state.queue.isEmpty()) {
+                result = new ArrayList<T>(result);
+                List<ListenableFuture<T>> futures = new ArrayList<>();
+                List<StepIndex> stepIndices = new ArrayList<>(state.queue);
+                state.queue.clear();
+                state.retryDependencies.clear();
+                for (StepIndex index : stepIndices) {
+                  ListenableFuture<T> future = executor.submit(() -> singleTransformer.get().call(index, context, state));
+                  Futures.addCallback(future, callback, MoreExecutors.sameThreadExecutor());
+                  futures.add(future);
+                }
+                ListenableFuture<List<T>> input = Futures.allAsList(futures);
+                try {
+                  List<T> subresults = Futures.<List<T>, List<T>>transform(input, this, executor).get();
+                  result.addAll(subresults);
+                } catch (InterruptedException | ExecutionException e) {
+                  throw Throwables.propagate(e);
+                }
+              }
+              return result;
+            }
+          };
           ListenableFuture<?> future = Futures.transform(
               Futures.allAsList(
                   distributeAndSubmitJobs(
@@ -96,9 +133,13 @@ public abstract class Step {
                       ImmutableList.of(),
                       callback,
                       context,
+                      state,
                       executor)),
               result -> {
-                postProccessor.ifPresent(listConsumer -> listConsumer.accept(result));
+                List<T> extras = reduceQueue.apply(new ArrayList<T>());
+                final List<T> newResult = new ArrayList<>(result);
+                newResult.addAll(extras);
+                postProccessor.ifPresent(listConsumer -> listConsumer.accept(newResult));
                 return result;
               },
               executor);
@@ -118,9 +159,9 @@ public abstract class Step {
       final Iterable<? extends Observer> observers,
       FutureCallback<T> callback,
       IndexingContext context,
+      ProcessingState<T> state,
       ListeningExecutorService executorService) {
     List<ListenableFuture<T>> futures = new ArrayList<>();
-    ProcessingState<T> state = new ProcessingState<>();
     for (int i = 0; i < numberOfSubtasks; i++) {
       final int slice = i;
       ListenableFuture<T> future = executorService.submit(() -> job.call(slice, numberOfSubtasks, context, state));

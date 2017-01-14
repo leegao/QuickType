@@ -30,7 +30,7 @@ public class SymbolizeAncestors {
     for (int i = 0; i < length; i++) {
       StepIndex index = new StepIndex(slice, i, buckets);
       try {
-        Multimap<String, String> compute = computeOne(index, context);
+        Multimap<String, String> compute = computeOne(index, context, state);
         ancestors.putAll(compute);
         state.push(index, compute);
       } catch (RetryException e) {
@@ -41,7 +41,10 @@ public class SymbolizeAncestors {
     return ancestors;
   }
 
-  public static Multimap<String, String> computeOne(StepIndex index, IndexingContext context) throws RetryException {
+  public static Multimap<String, String> computeOne(
+      StepIndex index,
+      IndexingContext context,
+      ProcessingState<Multimap<String, String>> state) throws RetryException {
     CompilationUnitTree compiledTree = context.compiledTrees[index.index()];
     Multimap<String, String> ancestorsSlice = HashMultimap.create();
 

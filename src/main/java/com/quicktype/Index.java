@@ -53,6 +53,7 @@ public class Index {
             Step.callable(SymbolizeAncestors::compute)
                 .withName("Symbolizing Ancestors")
                 .splitInto(256)
+                .singleTransformer(SymbolizeAncestors::computeOne)
                 .after(context::updateAncestors)
                 .build()
         )
