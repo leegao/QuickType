@@ -2,7 +2,10 @@ package com.quicktype.symbolize;
 
 import com.google.common.collect.*;
 import com.quicktype.IndexingContext;
+import com.quicktype.steps.ProcessingState;
+import com.quicktype.steps.RetryException;
 import com.quicktype.steps.Step;
+import com.quicktype.steps.StepIndex;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.ImportTree;
@@ -17,16 +20,29 @@ import java.util.Optional;
 import java.util.Stack;
 
 public class SymbolizeAncestors {
-  public static Multimap<String, String> compute(int slice, int buckets, IndexingContext context) throws IOException {
+  public static Multimap<String, String> compute(
+      int slice,
+      int buckets,
+      IndexingContext context,
+      ProcessingState<Multimap<String, String>> state) throws IOException {
     int length = Step.getLength(context.compiledTrees.length, buckets, slice);
     Multimap<String, String> ancestors = HashMultimap.create();
     for (int i = 0; i < length; i++) {
-      ancestors.putAll(compute(context.compiledTrees[slice + buckets * i], context));
+      StepIndex index = new StepIndex(slice, i, buckets);
+      try {
+        Multimap<String, String> compute = computeOne(index, context);
+        ancestors.putAll(compute);
+        state.push(index, compute);
+      } catch (RetryException e) {
+        // Do nothing
+        state.resubmit(index, e.dependencies);
+      }
     }
     return ancestors;
   }
 
-  private static Multimap<String, String> compute(CompilationUnitTree compiledTree, IndexingContext context) {
+  public static Multimap<String, String> computeOne(StepIndex index, IndexingContext context) throws RetryException {
+    CompilationUnitTree compiledTree = context.compiledTrees[index.index()];
     Multimap<String, String> ancestorsSlice = HashMultimap.create();
 
     String packageName = compiledTree.getPackageName().toString();
@@ -38,8 +54,7 @@ public class SymbolizeAncestors {
         String prefix = identifier.substring(0, identifier.length() - 2);
         importedSymbols.putAll(context.getSubSymbols(prefix));
       } else {
-        Optional<String> symbol = context.getSymbol(identifier);
-        symbol.ifPresent(s -> importedSymbols.put(identifier, s));
+        context.getSymbol(identifier).ifPresent(symbol -> importedSymbols.put(identifier, symbol));
       }
     }
 

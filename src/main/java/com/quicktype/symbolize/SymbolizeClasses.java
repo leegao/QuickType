@@ -5,6 +5,7 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Lists;
 import com.quicktype.IndexingContext;
+import com.quicktype.steps.ProcessingState;
 import com.quicktype.steps.Step;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
@@ -19,7 +20,11 @@ import java.io.IOException;
 import java.util.*;
 
 public class SymbolizeClasses {
-  public static BiMap<String, ClassTree> compute(int slice, int buckets, IndexingContext context) throws IOException {
+  public static BiMap<String, ClassTree> compute(
+      int slice,
+      int buckets,
+      IndexingContext context,
+      ProcessingState<BiMap<String, ClassTree>> states) throws IOException {
     int length = Step.getLength(context.compiledTrees.length, buckets, slice);
     BiMap<String, ClassTree> names = HashBiMap.create();
     for (int i = 0; i < length; i++) {

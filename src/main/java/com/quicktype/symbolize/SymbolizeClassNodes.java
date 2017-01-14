@@ -5,6 +5,7 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.quicktype.IndexingContext;
+import com.quicktype.steps.ProcessingState;
 import com.quicktype.steps.Step;
 import jdk.internal.org.objectweb.asm.tree.ClassNode;
 
@@ -12,7 +13,11 @@ import java.io.IOException;
 import java.util.List;
 
 public class SymbolizeClassNodes {
-  public static BiMap<String, ClassNode> compute(int slice, int buckets, IndexingContext context) throws IOException {
+  public static BiMap<String, ClassNode> compute(
+      int slice,
+      int buckets,
+      IndexingContext context,
+      ProcessingState<BiMap<String, ClassNode>> state) throws IOException {
     int length = Step.getLength(context.classNodes.size(), buckets, slice);
     BiMap<String, ClassNode> names = HashBiMap.create();
     for (int i = 0; i < length; i++) {

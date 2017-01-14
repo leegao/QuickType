@@ -19,7 +19,7 @@ public abstract class Step {
       throws ExecutionException, InterruptedException;
 
   public static <T> Builder<T> callable(Transformer<T> transformer) {
-    return new Builder<T>(transformer);
+    return new Builder<>(transformer);
   }
 
   public static Step barrier() {
@@ -35,7 +35,7 @@ public abstract class Step {
   }
 
   public interface Transformer<T> {
-    T call(int slice, int bucket, IndexingContext context) throws IOException;
+    T call(int slice, int bucket, IndexingContext context, ProcessingState<T> state) throws IOException;
   }
 
   public static int getLength(int size, int mod, int flag) {
@@ -120,9 +120,10 @@ public abstract class Step {
       IndexingContext context,
       ListeningExecutorService executorService) {
     List<ListenableFuture<T>> futures = new ArrayList<>();
+    ProcessingState<T> state = new ProcessingState<>();
     for (int i = 0; i < numberOfSubtasks; i++) {
       final int slice = i;
-      ListenableFuture<T> future = executorService.submit(() -> job.call(slice, numberOfSubtasks, context));
+      ListenableFuture<T> future = executorService.submit(() -> job.call(slice, numberOfSubtasks, context, state));
       Futures.addCallback(future, callback, MoreExecutors.sameThreadExecutor());
       futures.add(future);
     }

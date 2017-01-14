@@ -1,11 +1,9 @@
 package com.quicktype.parsing;
 
 import com.google.common.base.Throwables;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
 import com.quicktype.IndexingContext;
+import com.quicktype.steps.ProcessingState;
 import com.quicktype.steps.Step;
-import com.sun.source.tree.CompilationUnitTree;
 import jdk.internal.org.objectweb.asm.ClassReader;
 import jdk.internal.org.objectweb.asm.tree.ClassNode;
 
@@ -17,7 +15,11 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 public class ClassFileParser {
-  public static List<ClassNode> parse(int slice, int buckets, IndexingContext context) throws IOException {
+  public static List<ClassNode> parse(
+      int slice,
+      int buckets,
+      IndexingContext context,
+      ProcessingState<List<ClassNode>> state) throws IOException {
     int length = Step.getLength(context.classes.size(), buckets, slice);
     List<ClassNode> classes = new ArrayList<>();
     for (int i = 0; i < length; i++) {

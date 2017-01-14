@@ -3,6 +3,7 @@ package com.quicktype.parsing;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.quicktype.IndexingContext;
+import com.quicktype.steps.ProcessingState;
 import com.quicktype.steps.Step;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.util.JavacTask;
@@ -16,7 +17,11 @@ import java.io.IOException;
 import java.util.List;
 
 public class Parser {
-  public static List<CompilationUnitTree> parse(int slice, int buckets, IndexingContext context) throws IOException {
+  public static List<CompilationUnitTree> parse(
+      int slice,
+      int buckets,
+      IndexingContext context,
+      ProcessingState<List<CompilationUnitTree>> state) throws IOException {
     List<String> srcs = context.files;
     int length = Step.getLength(srcs.size(), buckets, slice);
 
