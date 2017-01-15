@@ -20,6 +20,7 @@ public class IndexingContext {
   public final Multimap<String, String> ancestors = HashMultimap.create();
   public final List<String> classes;
   public final List<ClassNode> classNodes = new ArrayList<>();
+  public final List<ClassTree> trees = new ArrayList<>();
 
   IndexingContext(List<String> files, List<String> classes) {
     this.compiledTrees = new CompilationUnitTree[files.size()];
@@ -39,6 +40,7 @@ public class IndexingContext {
   void updateClassSymbols(List<BiMap<String, ClassTree>> splitSymbols) {
     splitSymbols.forEach(symbolsToTrees::putAll);
     symbolsToTrees.forEach((symbol, tree) -> trie.put(symbol.replace('$', '.'), symbol));
+    trees.addAll(symbolsToTrees.values());
   }
 
   void updateAncestors(List<Multimap<String, String>> splitAncestors) {

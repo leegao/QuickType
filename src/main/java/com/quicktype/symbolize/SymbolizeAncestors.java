@@ -89,6 +89,11 @@ public class SymbolizeAncestors {
         if (currentClass != null) {
           ancestors.forEach(symbol -> ancestorsSlice.put(currentClass, symbol));
         }
+        // Get the ancestors of the ancestors too
+        for (String ancestor : ancestors) {
+          System.err.println(ancestor);
+        }
+
         BiMap<String, String> current = HashBiMap.create();
         ancestors.forEach(symbol -> current.put(symbol.replace('$', '.'), symbol));
         openedSymbols.push(current);
