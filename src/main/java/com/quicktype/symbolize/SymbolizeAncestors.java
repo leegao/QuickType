@@ -3,7 +3,6 @@ package com.quicktype.symbolize;
 import com.google.common.collect.*;
 import com.quicktype.IndexingContext;
 import com.quicktype.steps.ProcessingState;
-import com.quicktype.steps.RetryException;
 import com.quicktype.steps.Step;
 import com.quicktype.steps.StepIndex;
 import com.sun.source.tree.ClassTree;
@@ -14,10 +13,7 @@ import com.sun.source.util.TreePathScanner;
 import com.sun.tools.javac.tree.JCTree;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Stack;
+import java.util.*;
 
 public class SymbolizeAncestors {
   public static Multimap<String, String> compute(
@@ -29,23 +25,21 @@ public class SymbolizeAncestors {
     Multimap<String, String> ancestors = HashMultimap.create();
     for (int i = 0; i < length; i++) {
       StepIndex index = new StepIndex(slice, i, buckets);
-      try {
-        Multimap<String, String> compute = computeOne(index, context, state);
-        ancestors.putAll(compute);
-        state.push(index, compute);
-      } catch (RetryException e) {
-        // Do nothing
-        state.resubmit(index, e.dependencies);
+      Multimap<String, String> compute = computeOne(context.compiledTrees[index.index()], context, state);
+      ancestors.putAll(compute);
+      synchronized (context.ancestors) {
+        context.ancestors.putAll(compute);
       }
+      state.notify(compute.keySet());
     }
     return ancestors;
   }
 
   public static Multimap<String, String> computeOne(
-      StepIndex index,
+      Object index,
       IndexingContext context,
-      ProcessingState<Multimap<String, String>> state) throws RetryException {
-    CompilationUnitTree compiledTree = context.compiledTrees[index.index()];
+      ProcessingState<Multimap<String, String>> state) {
+    CompilationUnitTree compiledTree = (CompilationUnitTree) index;
     Multimap<String, String> ancestorsSlice = HashMultimap.create();
 
     String packageName = compiledTree.getPackageName().toString();
@@ -89,8 +83,22 @@ public class SymbolizeAncestors {
         if (currentClass != null) {
           ancestors.forEach(symbol -> ancestorsSlice.put(currentClass, symbol));
         }
-
         BiMap<String, String> current = HashBiMap.create();
+
+        Set<String> dependencies = new HashSet<>();
+        for (String symbol : ancestors) {
+          if (context.symbolsToNodes.containsKey(symbol) || context.ancestors.containsKey(symbol)) {
+            if (context.ancestors.containsKey(symbol)) {
+              // Add its ancestors: TODO
+            }
+            continue;
+          }
+          dependencies.add(symbol);
+        }
+        if (!dependencies.isEmpty()) {
+          state.resubmit(compiledTree, dependencies);
+        }
+
         ancestors.forEach(symbol -> current.put(symbol.replace('$', '.'), symbol));
         openedSymbols.push(current);
         super.visitClass(classTree, context);
@@ -114,7 +122,7 @@ public class SymbolizeAncestors {
         return Optional.of(m.get(symbol));
       }
       for (String key : m.keySet()) {
-        if (key.endsWith(symbol)) {
+        if (key.endsWith("." + symbol)) {
           return Optional.of(m.get(key));
         }
       }

@@ -40,7 +40,7 @@ public abstract class Step {
   }
 
   public interface SingleTransformer<T> {
-    T call(StepIndex index, IndexingContext context, ProcessingState<T> state) throws IOException, RetryException;
+    T call(Object value, IndexingContext context, ProcessingState<T> state) throws IOException, RetryException;
   }
 
   public static int getLength(int size, int mod, int flag) {
@@ -106,10 +106,10 @@ public abstract class Step {
               if (!state.queue.isEmpty()) {
                 result = new ArrayList<T>(result);
                 List<ListenableFuture<T>> futures = new ArrayList<>();
-                List<StepIndex> stepIndices = new ArrayList<>(state.queue);
+                List<?> stepIndices = new ArrayList<>(state.queue);
                 state.queue.clear();
                 state.retryDependencies.clear();
-                for (StepIndex index : stepIndices) {
+                for (Object index : stepIndices) {
                   ListenableFuture<T> future = executor.submit(() -> singleTransformer.get().call(index, context, state));
                   Futures.addCallback(future, callback, MoreExecutors.sameThreadExecutor());
                   futures.add(future);
